@@ -190,6 +190,153 @@ server.tool(
   }
 );
 
+// ── apply_keying ──────────────────────────────────────────────────────────────
+server.tool(
+  "apply_keying",
+  "Apply chroma keying to a layer using Keylight. Removes green/blue screen backgrounds.",
+  {
+    compName:    z.string().describe("Composition name"),
+    layerName:   z.string().describe("Layer name to key"),
+    screenColor: z.tuple([z.coerce.number(), z.coerce.number(), z.coerce.number()])
+                  .describe("Screen color to remove as [r, g, b] each 0-1. e.g. [0,1,0] for green, [0,0,1] for blue"),
+    screenGain:  z.coerce.number().optional().describe("Screen gain 0-200 (default 100)"),
+    screenBalance: z.coerce.number().optional().describe("Screen balance 0-1 (default 0.5)"),
+  },
+  async (args) => {
+    try { return ok(await runCommand("applyKeying", args)); }
+    catch (e) { return err(String(e)); }
+  }
+);
+
+// ── stabilize ────────────────────────────────────────────────────────────────
+server.tool(
+  "stabilize",
+  "Apply Warp Stabilizer to smooth out camera shake on a layer",
+  {
+    compName:     z.string().describe("Composition name"),
+    layerName:    z.string().describe("Layer name"),
+    smoothness:   z.coerce.number().optional().describe("Smoothness percentage (default 50)"),
+    method:       z.enum(["subspace_warp", "perspective", "similarity", "position"]).optional()
+                   .describe("Stabilization method (default: subspace_warp)"),
+  },
+  async (args) => {
+    try { return ok(await runCommand("stabilize", args)); }
+    catch (e) { return err(String(e)); }
+  }
+);
+
+// ── add_camera ────────────────────────────────────────────────────────────────
+server.tool(
+  "add_camera",
+  "Add a 3D camera to a composition",
+  {
+    compName:   z.string().describe("Composition name"),
+    name:       z.string().optional().describe("Camera name (default: Camera 1)"),
+    focalLength: z.coerce.number().optional().describe("Focal length in mm (default: 50)"),
+    cameraType: z.enum(["one_node", "two_node"]).optional().describe("Camera type (default: two_node)"),
+  },
+  async (args) => {
+    try { return ok(await runCommand("addCamera", args)); }
+    catch (e) { return err(String(e)); }
+  }
+);
+
+// ── set_3d ────────────────────────────────────────────────────────────────────
+server.tool(
+  "set_3d",
+  "Enable or disable 3D on a layer",
+  {
+    compName:  z.string().describe("Composition name"),
+    layerName: z.string().describe("Layer name"),
+    enabled:   z.boolean().describe("true to enable 3D, false to disable"),
+  },
+  async (args) => {
+    try { return ok(await runCommand("set3D", args)); }
+    catch (e) { return err(String(e)); }
+  }
+);
+
+// ── duplicate_layer ───────────────────────────────────────────────────────────
+server.tool(
+  "duplicate_layer",
+  "Duplicate a layer in a composition",
+  {
+    compName:  z.string().describe("Composition name"),
+    layerName: z.string().describe("Layer name to duplicate"),
+    newName:   z.string().optional().describe("Name for the duplicated layer"),
+  },
+  async (args) => {
+    try { return ok(await runCommand("duplicateLayer", args)); }
+    catch (e) { return err(String(e)); }
+  }
+);
+
+// ── parent_layer ──────────────────────────────────────────────────────────────
+server.tool(
+  "parent_layer",
+  "Set the parent of a layer to another layer (for linked transforms)",
+  {
+    compName:   z.string().describe("Composition name"),
+    layerName:  z.string().describe("Child layer name"),
+    parentName: z.string().describe("Parent layer name. Pass empty string to remove parent."),
+  },
+  async (args) => {
+    try { return ok(await runCommand("parentLayer", args)); }
+    catch (e) { return err(String(e)); }
+  }
+);
+
+// ── add_mask ──────────────────────────────────────────────────────────────────
+server.tool(
+  "add_mask",
+  "Add a rectangular or elliptical mask to a layer",
+  {
+    compName:  z.string().describe("Composition name"),
+    layerName: z.string().describe("Layer name"),
+    shape:     z.enum(["rect", "ellipse"]).describe("Mask shape"),
+    position:  z.tuple([z.coerce.number(), z.coerce.number()]).optional()
+                .describe("Centre position [x, y] in pixels (default: comp centre)"),
+    size:      z.tuple([z.coerce.number(), z.coerce.number()]).optional()
+                .describe("Mask size [width, height] in pixels (default: half comp size)"),
+    feather:   z.coerce.number().optional().describe("Feather amount in pixels (default: 0)"),
+    inverted:  z.boolean().optional().describe("Invert the mask (default: false)"),
+  },
+  async (args) => {
+    try { return ok(await runCommand("addMask", args)); }
+    catch (e) { return err(String(e)); }
+  }
+);
+
+// ── pre_compose ───────────────────────────────────────────────────────────────
+server.tool(
+  "pre_compose",
+  "Pre-compose a layer into its own composition",
+  {
+    compName:    z.string().describe("Composition name"),
+    layerName:   z.string().describe("Layer name to pre-compose"),
+    newCompName: z.string().describe("Name for the new pre-comp"),
+    moveAll:     z.boolean().optional().describe("Move all attributes into new comp (default: true)"),
+  },
+  async (args) => {
+    try { return ok(await runCommand("preCompose", args)); }
+    catch (e) { return err(String(e)); }
+  }
+);
+
+// ── track_camera ──────────────────────────────────────────────────────────────
+server.tool(
+  "track_camera",
+  "Apply 3D Camera Tracker effect to a layer for 3D scene reconstruction",
+  {
+    compName:  z.string().describe("Composition name"),
+    layerName: z.string().describe("Footage layer name to track"),
+  },
+  async (args) => {
+    try { return ok(await runCommand("trackCamera", args)); }
+    catch (e) { return err(String(e)); }
+  }
+);
+
 // ─── Start ────────────────────────────────────────────────────────────────────
 const transport = new StdioServerTransport();
 await server.connect(transport);

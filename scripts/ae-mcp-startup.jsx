@@ -151,6 +151,143 @@
       try { return { success: true, result: eval(args.code) }; }
       catch(e) { return { success: false, error: e.toString() }; }
     }
+
+    if (cmd === "applyKeying") {
+      app.beginUndoGroup("SAI MCP: applyKeying");
+      try {
+        var comp = findComp(args.compName); if (!comp) { app.endUndoGroup(); return { success: false, error: "Comp not found" }; }
+        var layer = findLayer(comp, args.layerName); if (!layer) { app.endUndoGroup(); return { success: false, error: "Layer not found" }; }
+        var kl = layer.Effects.addProperty("ADBE Keylight");
+        if (!kl) { app.endUndoGroup(); return { success: false, error: "Keylight not available" }; }
+        var sc = args.screenColor || [0, 1, 0];
+        kl.property("ADBE Keylight-0001").setValue([sc[0], sc[1], sc[2]]);
+        if (args.screenGain !== undefined) kl.property("ADBE Keylight-0003").setValue(args.screenGain);
+        if (args.screenBalance !== undefined) kl.property("ADBE Keylight-0004").setValue(args.screenBalance);
+        app.endUndoGroup();
+        return { success: true, effect: "Keylight", screenColor: sc };
+      } catch(e) { try{app.endUndoGroup();}catch(ex){} return { success: false, error: e.toString() }; }
+    }
+
+    if (cmd === "stabilize") {
+      app.beginUndoGroup("SAI MCP: stabilize");
+      try {
+        var comp = findComp(args.compName); if (!comp) { app.endUndoGroup(); return { success: false, error: "Comp not found" }; }
+        var layer = findLayer(comp, args.layerName); if (!layer) { app.endUndoGroup(); return { success: false, error: "Layer not found" }; }
+        var ws = layer.Effects.addProperty("ADBE Warp Stabilizer");
+        if (!ws) { app.endUndoGroup(); return { success: false, error: "Warp Stabilizer not available" }; }
+        if (args.smoothness !== undefined) ws.property("ADBE WS Smoothness").setValue(args.smoothness);
+        var methodMap = { subspace_warp: 3, perspective: 2, similarity: 1, position: 0 };
+        if (args.method && methodMap[args.method] !== undefined) ws.property("ADBE WS Method").setValue(methodMap[args.method]);
+        app.endUndoGroup();
+        return { success: true, effect: "Warp Stabilizer" };
+      } catch(e) { try{app.endUndoGroup();}catch(ex){} return { success: false, error: e.toString() }; }
+    }
+
+    if (cmd === "addCamera") {
+      app.beginUndoGroup("SAI MCP: addCamera");
+      try {
+        var comp = findComp(args.compName); if (!comp) { app.endUndoGroup(); return { success: false, error: "Comp not found" }; }
+        var camType = (args.cameraType === "one_node") ? CameraType.ONE_NODE : CameraType.TWO_NODE;
+        var fov = args.focalLength || 50;
+        var cam = comp.layers.addCamera(args.name || "Camera 1", [comp.width / 2, comp.height / 2]);
+        cam.cameraOption.property("ADBE Camera Options Group").property("ADBE Camera Zoom").setValue(fov * 10);
+        app.endUndoGroup();
+        return { success: true, cameraName: cam.name };
+      } catch(e) { try{app.endUndoGroup();}catch(ex){} return { success: false, error: e.toString() }; }
+    }
+
+    if (cmd === "set3D") {
+      app.beginUndoGroup("SAI MCP: set3D");
+      try {
+        var comp = findComp(args.compName); if (!comp) { app.endUndoGroup(); return { success: false, error: "Comp not found" }; }
+        var layer = findLayer(comp, args.layerName); if (!layer) { app.endUndoGroup(); return { success: false, error: "Layer not found" }; }
+        layer.threeDLayer = !!args.enabled;
+        app.endUndoGroup();
+        return { success: true, layerName: layer.name, threeDLayer: layer.threeDLayer };
+      } catch(e) { try{app.endUndoGroup();}catch(ex){} return { success: false, error: e.toString() }; }
+    }
+
+    if (cmd === "duplicateLayer") {
+      app.beginUndoGroup("SAI MCP: duplicateLayer");
+      try {
+        var comp = findComp(args.compName); if (!comp) { app.endUndoGroup(); return { success: false, error: "Comp not found" }; }
+        var layer = findLayer(comp, args.layerName); if (!layer) { app.endUndoGroup(); return { success: false, error: "Layer not found" }; }
+        var dup = layer.duplicate();
+        if (args.newName) dup.name = args.newName;
+        app.endUndoGroup();
+        return { success: true, newLayerName: dup.name, layerIndex: dup.index };
+      } catch(e) { try{app.endUndoGroup();}catch(ex){} return { success: false, error: e.toString() }; }
+    }
+
+    if (cmd === "parentLayer") {
+      app.beginUndoGroup("SAI MCP: parentLayer");
+      try {
+        var comp = findComp(args.compName); if (!comp) { app.endUndoGroup(); return { success: false, error: "Comp not found" }; }
+        var layer = findLayer(comp, args.layerName); if (!layer) { app.endUndoGroup(); return { success: false, error: "Child layer not found" }; }
+        if (!args.parentName || args.parentName === "") {
+          layer.parent = null;
+        } else {
+          var parent = findLayer(comp, args.parentName); if (!parent) { app.endUndoGroup(); return { success: false, error: "Parent layer not found" }; }
+          layer.parent = parent;
+        }
+        app.endUndoGroup();
+        return { success: true, layer: layer.name, parent: args.parentName || "none" };
+      } catch(e) { try{app.endUndoGroup();}catch(ex){} return { success: false, error: e.toString() }; }
+    }
+
+    if (cmd === "addMask") {
+      app.beginUndoGroup("SAI MCP: addMask");
+      try {
+        var comp = findComp(args.compName); if (!comp) { app.endUndoGroup(); return { success: false, error: "Comp not found" }; }
+        var layer = findLayer(comp, args.layerName); if (!layer) { app.endUndoGroup(); return { success: false, error: "Layer not found" }; }
+        var masks = layer.property("ADBE Mask Parade");
+        var mask = masks.addProperty("ADBE Mask Atom");
+        var cx = args.position ? args.position[0] : comp.width / 2;
+        var cy = args.position ? args.position[1] : comp.height / 2;
+        var hw = args.size ? args.size[0] / 2 : comp.width / 4;
+        var hh = args.size ? args.size[1] / 2 : comp.height / 4;
+        var shape = new Shape(); shape.closed = true;
+        if (args.shape === "ellipse") {
+          var k = 0.5523;
+          shape.vertices = [[cx, cy-hh],[cx+hw, cy],[cx, cy+hh],[cx-hw, cy]];
+          shape.inTangents = [[-hw*k,0],[0,-hh*k],[hw*k,0],[0,hh*k]];
+          shape.outTangents = [[hw*k,0],[0,hh*k],[-hw*k,0],[0,-hh*k]];
+        } else {
+          shape.vertices = [[cx-hw,cy-hh],[cx+hw,cy-hh],[cx+hw,cy+hh],[cx-hw,cy+hh]];
+          shape.inTangents = [[0,0],[0,0],[0,0],[0,0]];
+          shape.outTangents = [[0,0],[0,0],[0,0],[0,0]];
+        }
+        mask.property("ADBE Mask Shape").setValue(shape);
+        if (args.feather) mask.property("ADBE Mask Feather").setValue([args.feather, args.feather]);
+        if (args.inverted) mask.inverted = true;
+        app.endUndoGroup();
+        return { success: true, maskIndex: masks.numProperties };
+      } catch(e) { try{app.endUndoGroup();}catch(ex){} return { success: false, error: e.toString() }; }
+    }
+
+    if (cmd === "preCompose") {
+      app.beginUndoGroup("SAI MCP: preCompose");
+      try {
+        var comp = findComp(args.compName); if (!comp) { app.endUndoGroup(); return { success: false, error: "Comp not found" }; }
+        var layer = findLayer(comp, args.layerName); if (!layer) { app.endUndoGroup(); return { success: false, error: "Layer not found" }; }
+        comp.layers.precompose([layer.index], args.newCompName, args.moveAll !== false);
+        app.endUndoGroup();
+        return { success: true, newCompName: args.newCompName };
+      } catch(e) { try{app.endUndoGroup();}catch(ex){} return { success: false, error: e.toString() }; }
+    }
+
+    if (cmd === "trackCamera") {
+      app.beginUndoGroup("SAI MCP: trackCamera");
+      try {
+        var comp = findComp(args.compName); if (!comp) { app.endUndoGroup(); return { success: false, error: "Comp not found" }; }
+        var layer = findLayer(comp, args.layerName); if (!layer) { app.endUndoGroup(); return { success: false, error: "Layer not found" }; }
+        var tracker = layer.Effects.addProperty("ADBE 3D Camera Tracker");
+        if (!tracker) { app.endUndoGroup(); return { success: false, error: "3D Camera Tracker not available" }; }
+        app.endUndoGroup();
+        return { success: true, note: "3D Camera Tracker applied. Open AE to run the analysis." };
+      } catch(e) { try{app.endUndoGroup();}catch(ex){} return { success: false, error: e.toString() }; }
+    }
+
     return { success: false, error: "Unknown command: " + cmd };
   }
 
