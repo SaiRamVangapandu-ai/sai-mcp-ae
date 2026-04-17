@@ -1,0 +1,20 @@
+{
+  "name": "sai-mcp-ae",
+  "version": "1.0.0",
+  "description": "SAI MCP AE — control After Effects from Claude",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "start": "node build/index.js",
+    "dev": "tsc --watch",
+    "install-panel": "node install.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.10.2",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.4.0"
+  }
+}
