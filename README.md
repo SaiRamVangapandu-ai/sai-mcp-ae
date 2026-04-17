@@ -16,42 +16,20 @@ After Effects (silent background script)
 Claude Desktop → returns result
 ```
 
-## Setup (5 minutes)
+## Setup (3 commands)
 
-### 1. Clone & build
 ```bash
-git clone https://github.com/YOUR_USERNAME/sai-mcp-ae.git
+git clone https://github.com/SaiRamVangapandu-ai/sai-mcp-ae.git
 cd sai-mcp-ae
-npm install
-npm run build
+npm install && npm run build && node install.js
 ```
 
-### 2. Install the AE background script
-```bash
-# After Effects (Beta)
-sudo cp scripts/ae-mcp-startup.jsx "/Applications/Adobe After Effects (Beta)/Scripts/Startup/ae-mcp-startup.jsx"
+The install script automatically:
+- Detects your After Effects version
+- Copies the background script to AE's Startup folder
+- Adds the MCP to your Claude Desktop config with the correct path
 
-# After Effects 2025
-sudo cp scripts/ae-mcp-startup.jsx "/Applications/Adobe After Effects 2025/Scripts/Startup/ae-mcp-startup.jsx"
-```
-
-### 3. Add to Claude Desktop
-Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
-```json
-{
-  "mcpServers": {
-    "sai-mcp-ae": {
-      "command": "node",
-      "args": ["/absolute/path/to/sai-mcp-ae/build/index.js"]
-    }
-  }
-}
-```
-> Replace `/absolute/path/to/sai-mcp-ae` with the actual path where you cloned the repo.
-
-### 4. Restart both apps
-- Quit and reopen **After Effects** (startup script auto-loads)
-- Quit and reopen **Claude Desktop** (MCP server connects)
+Then just **restart After Effects** and **restart Claude Desktop** — done.
 
 ---
 
