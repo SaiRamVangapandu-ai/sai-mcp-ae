@@ -288,6 +288,163 @@
       } catch(e) { try{app.endUndoGroup();}catch(ex){} return { success: false, error: e.toString() }; }
     }
 
+    // ── Color Grade ────────────────────────────────────────────────────────────
+    if (cmd === "colorGrade") {
+      app.beginUndoGroup("SAI MCP: colorGrade");
+      try {
+        var comp = findComp(args.compName); if (!comp) { app.endUndoGroup(); return { success: false, error: "Comp not found" }; }
+        var layer = findLayer(comp, args.layerName); if (!layer) { app.endUndoGroup(); return { success: false, error: "Layer not found" }; }
+        var intensity = (args.intensity !== undefined ? args.intensity : 100) / 100;
+        var p = args.preset;
+
+        // Always add Brightness & Contrast
+        var bc = layer.Effects.addProperty("ADBE Brightness & Contrast 2");
+        // Always add Hue/Saturation
+        var hs = layer.Effects.addProperty("ADBE HUE SATURATION");
+        // Always add Curves
+        var cv = layer.Effects.addProperty("ADBE CurvesCustom");
+
+        if (p === "cinematic") {
+          bc.property("ADBE Brightness & Contrast 2-0002").setValue(15 * intensity);
+          hs.property("ADBE HUE SATURATION-0003").setValue(-20 * intensity);
+          // Blue channel lift for teal-orange look
+        } else if (p === "warm") {
+          bc.property("ADBE Brightness & Contrast 2-0001").setValue(5 * intensity);
+          bc.property("ADBE Brightness & Contrast 2-0002").setValue(10 * intensity);
+          hs.property("ADBE HUE SATURATION-0003").setValue(20 * intensity);
+          hs.property("ADBE HUE SATURATION-0002").setValue(15 * intensity);
+        } else if (p === "cool") {
+          hs.property("ADBE HUE SATURATION-0003").setValue(-10 * intensity);
+          hs.property("ADBE HUE SATURATION-0002").setValue(-20 * intensity);
+        } else if (p === "vintage") {
+          bc.property("ADBE Brightness & Contrast 2-0002").setValue(10 * intensity);
+          hs.property("ADBE HUE SATURATION-0003").setValue(-40 * intensity);
+          hs.property("ADBE HUE SATURATION-0002").setValue(10 * intensity);
+        } else if (p === "moody") {
+          bc.property("ADBE Brightness & Contrast 2-0001").setValue(-10 * intensity);
+          bc.property("ADBE Brightness & Contrast 2-0002").setValue(20 * intensity);
+          hs.property("ADBE HUE SATURATION-0003").setValue(-30 * intensity);
+        } else if (p === "bright") {
+          bc.property("ADBE Brightness & Contrast 2-0001").setValue(15 * intensity);
+          bc.property("ADBE Brightness & Contrast 2-0002").setValue(5 * intensity);
+          hs.property("ADBE HUE SATURATION-0003").setValue(15 * intensity);
+        } else if (p === "clean") {
+          bc.property("ADBE Brightness & Contrast 2-0002").setValue(8 * intensity);
+        }
+
+        app.endUndoGroup();
+        return { success: true, preset: p, intensity: args.intensity || 100 };
+      } catch(e) { try{app.endUndoGroup();}catch(ex){} return { success: false, error: e.toString() }; }
+    }
+
+    // ── Adjust Color ───────────────────────────────────────────────────────────
+    if (cmd === "adjustColor") {
+      app.beginUndoGroup("SAI MCP: adjustColor");
+      try {
+        var comp = findComp(args.compName); if (!comp) { app.endUndoGroup(); return { success: false, error: "Comp not found" }; }
+        var layer = findLayer(comp, args.layerName); if (!layer) { app.endUndoGroup(); return { success: false, error: "Layer not found" }; }
+
+        if (args.brightness !== undefined || args.contrast !== undefined) {
+          var bc = layer.Effects.addProperty("ADBE Brightness & Contrast 2");
+          if (args.brightness !== undefined) bc.property("ADBE Brightness & Contrast 2-0001").setValue(args.brightness);
+          if (args.contrast !== undefined) bc.property("ADBE Brightness & Contrast 2-0002").setValue(args.contrast);
+        }
+        if (args.saturation !== undefined || args.hue !== undefined) {
+          var hs = layer.Effects.addProperty("ADBE HUE SATURATION");
+          if (args.hue !== undefined) hs.property("ADBE HUE SATURATION-0002").setValue(args.hue);
+          if (args.saturation !== undefined) hs.property("ADBE HUE SATURATION-0003").setValue(args.saturation);
+        }
+        if (args.temperature !== undefined) {
+          var cb = layer.Effects.addProperty("ADBE Color Balance (HLS)");
+          // Warm = shift hue slightly toward orange, boost lightness
+          cb.property("ADBE Color Balance (HLS)-0002").setValue(args.temperature * 0.3);
+          cb.property("ADBE Color Balance (HLS)-0003").setValue(args.temperature * 0.1);
+        }
+        if (args.vignette) {
+          var vig = layer.Effects.addProperty("ADBE Ramp");
+          vig.property(5).setValue(2); // radial
+          vig.property(1).setValue([comp.width/2, comp.height/2]);
+          vig.property(3).setValue([comp.width * 0.9, comp.height * 0.9]);
+          vig.property(2).setValue([0,0,0,0]);
+          vig.property(4).setValue([0,0,0,1]);
+          layer.Effects.property(layer.Effects.numProperties).blendingMode = BlendingMode.MULTIPLY;
+        }
+
+        app.endUndoGroup();
+        return { success: true };
+      } catch(e) { try{app.endUndoGroup();}catch(ex){} return { success: false, error: e.toString() }; }
+    }
+
+    // ── Animate Text ───────────────────────────────────────────────────────────
+    if (cmd === "animateText") {
+      app.beginUndoGroup("SAI MCP: animateText");
+      try {
+        var comp = findComp(args.compName); if (!comp) { app.endUndoGroup(); return { success: false, error: "Comp not found" }; }
+        var layer = findLayer(comp, args.layerName); if (!layer) { app.endUndoGroup(); return { success: false, error: "Layer not found" }; }
+
+        var startT  = args.startTime  || 0;
+        var dur     = args.duration   || 1;
+        var endT    = startT + dur;
+        var animDir = args.direction  || "in";
+        var type    = args.type;
+
+        var textProp = layer.property("ADBE Text Properties");
+        var animators = textProp.property("ADBE Text Animators");
+        var animator = animators.addProperty("ADBE Text Animator");
+        animator.name = type;
+
+        var range = animator.property("ADBE Text Selectors").addProperty("ADBE Text Selector");
+        var rangeProp = range.property("ADBE Text Percent Start");
+
+        if (type === "typewriter") {
+          // Opacity animator — characters appear one by one
+          var opacProp = animator.property("ADBE Text Animator Properties").addProperty("ADBE Text Opacity");
+          opacProp.setValue(0);
+          range.property("ADBE Text Percent End").setValueAtTime(startT, 0);
+          range.property("ADBE Text Percent End").setValueAtTime(endT, 100);
+          if (animDir === "out" || animDir === "both") {
+            range.property("ADBE Text Percent End").setValueAtTime(endT + dur, 0);
+          }
+        } else if (type === "fade_in") {
+          var opacProp = animator.property("ADBE Text Animator Properties").addProperty("ADBE Text Opacity");
+          opacProp.setValue(0);
+          range.property("ADBE Text Percent End").setValueAtTime(startT, 0);
+          range.property("ADBE Text Percent End").setValueAtTime(endT, 100);
+        } else if (type === "fade_up") {
+          var opacProp = animator.property("ADBE Text Animator Properties").addProperty("ADBE Text Opacity");
+          opacProp.setValue(0);
+          var posProp = animator.property("ADBE Text Animator Properties").addProperty("ADBE Text Position");
+          posProp.setValue([0, 40]);
+          range.property("ADBE Text Percent End").setValueAtTime(startT, 0);
+          range.property("ADBE Text Percent End").setValueAtTime(endT, 100);
+        } else if (type === "scale_in") {
+          var scaleProp = animator.property("ADBE Text Animator Properties").addProperty("ADBE Text Scale");
+          scaleProp.setValue([0, 0]);
+          var opacProp = animator.property("ADBE Text Animator Properties").addProperty("ADBE Text Opacity");
+          opacProp.setValue(0);
+          range.property("ADBE Text Percent End").setValueAtTime(startT, 0);
+          range.property("ADBE Text Percent End").setValueAtTime(endT, 100);
+        } else if (type === "blur_in") {
+          var blurProp = animator.property("ADBE Text Animator Properties").addProperty("ADBE Text Blur");
+          blurProp.setValue(20);
+          var opacProp = animator.property("ADBE Text Animator Properties").addProperty("ADBE Text Opacity");
+          opacProp.setValue(0);
+          range.property("ADBE Text Percent End").setValueAtTime(startT, 0);
+          range.property("ADBE Text Percent End").setValueAtTime(endT, 100);
+        } else if (type === "slide_right") {
+          var posProp = animator.property("ADBE Text Animator Properties").addProperty("ADBE Text Position");
+          posProp.setValue([-100, 0]);
+          var opacProp = animator.property("ADBE Text Animator Properties").addProperty("ADBE Text Opacity");
+          opacProp.setValue(0);
+          range.property("ADBE Text Percent End").setValueAtTime(startT, 0);
+          range.property("ADBE Text Percent End").setValueAtTime(endT, 100);
+        }
+
+        app.endUndoGroup();
+        return { success: true, type: type, startTime: startT, duration: dur };
+      } catch(e) { try{app.endUndoGroup();}catch(ex){} return { success: false, error: e.toString() }; }
+    }
+
     return { success: false, error: "Unknown command: " + cmd };
   }
 

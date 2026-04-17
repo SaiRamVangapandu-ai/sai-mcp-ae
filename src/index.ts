@@ -337,6 +337,64 @@ server.tool(
   }
 );
 
+// ── color_grade ───────────────────────────────────────────────────────────────
+server.tool(
+  "color_grade",
+  "Apply a colour grade preset to a layer. Presets: cinematic, warm, cool, vintage, clean, moody, bright.",
+  {
+    compName:   z.string().describe("Composition name"),
+    layerName:  z.string().describe("Layer name"),
+    preset:     z.enum(["cinematic", "warm", "cool", "vintage", "clean", "moody", "bright"])
+                 .describe("Grade preset to apply"),
+    intensity:  z.coerce.number().min(0).max(100).optional()
+                 .describe("Blend strength 0-100 (default: 100)"),
+  },
+  async (args) => {
+    try { return ok(await runCommand("colorGrade", args)); }
+    catch (e) { return err(String(e)); }
+  }
+);
+
+// ── adjust_color ──────────────────────────────────────────────────────────────
+server.tool(
+  "adjust_color",
+  "Fine-tune colour properties on a layer: brightness, contrast, saturation, hue, temperature.",
+  {
+    compName:    z.string().describe("Composition name"),
+    layerName:   z.string().describe("Layer name"),
+    brightness:  z.coerce.number().optional().describe("Brightness -100 to 100"),
+    contrast:    z.coerce.number().optional().describe("Contrast -100 to 100"),
+    saturation:  z.coerce.number().optional().describe("Saturation -100 to 100 (0 = no change)"),
+    hue:         z.coerce.number().optional().describe("Hue rotation in degrees"),
+    temperature: z.coerce.number().optional().describe("Warm/cool shift -100 (cool) to 100 (warm)"),
+    vignette:    z.boolean().optional().describe("Add a vignette (default: false)"),
+  },
+  async (args) => {
+    try { return ok(await runCommand("adjustColor", args)); }
+    catch (e) { return err(String(e)); }
+  }
+);
+
+// ── animate_text ──────────────────────────────────────────────────────────────
+server.tool(
+  "animate_text",
+  "Animate text character by character. Types: typewriter, fade_up, fade_in, scale_in, blur_in, slide_right.",
+  {
+    compName:   z.string().describe("Composition name"),
+    layerName:  z.string().describe("Text layer name"),
+    type:       z.enum(["typewriter", "fade_up", "fade_in", "scale_in", "blur_in", "slide_right"])
+                 .describe("Animation style"),
+    startTime:  z.coerce.number().optional().describe("Animation start time in seconds (default: 0)"),
+    duration:   z.coerce.number().optional().describe("Total animation duration in seconds (default: 1)"),
+    direction:  z.enum(["in", "out", "both"]).optional()
+                 .describe("Animate in, out, or both (default: in)"),
+  },
+  async (args) => {
+    try { return ok(await runCommand("animateText", args)); }
+    catch (e) { return err(String(e)); }
+  }
+);
+
 // ─── Start ────────────────────────────────────────────────────────────────────
 const transport = new StdioServerTransport();
 await server.connect(transport);
