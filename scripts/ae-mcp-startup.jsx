@@ -157,12 +157,12 @@
       try {
         var comp = findComp(args.compName); if (!comp) { app.endUndoGroup(); return { success: false, error: "Comp not found" }; }
         var layer = findLayer(comp, args.layerName); if (!layer) { app.endUndoGroup(); return { success: false, error: "Layer not found" }; }
-        var kl = layer.Effects.addProperty("ADBE Keylight");
+        var kl = layer.Effects.addProperty("Keylight (1.2)");
         if (!kl) { app.endUndoGroup(); return { success: false, error: "Keylight not available" }; }
         var sc = args.screenColor || [0, 1, 0];
-        kl.property("ADBE Keylight-0001").setValue([sc[0], sc[1], sc[2]]);
-        if (args.screenGain !== undefined) kl.property("ADBE Keylight-0003").setValue(args.screenGain);
-        if (args.screenBalance !== undefined) kl.property("ADBE Keylight-0004").setValue(args.screenBalance);
+        kl.property("Keylight 906-0004").setValue([sc[0], sc[1], sc[2]]); // Screen Colour
+        if (args.screenGain !== undefined) kl.property("Keylight 906-0005").setValue(args.screenGain);
+        if (args.screenBalance !== undefined) kl.property("Keylight 906-0006").setValue(args.screenBalance);
         app.endUndoGroup();
         return { success: true, effect: "Keylight", screenColor: sc };
       } catch(e) { try{app.endUndoGroup();}catch(ex){} return { success: false, error: e.toString() }; }
@@ -173,9 +173,9 @@
       try {
         var comp = findComp(args.compName); if (!comp) { app.endUndoGroup(); return { success: false, error: "Comp not found" }; }
         var layer = findLayer(comp, args.layerName); if (!layer) { app.endUndoGroup(); return { success: false, error: "Layer not found" }; }
-        var ws = layer.Effects.addProperty("ADBE Warp Stabilizer");
+        var ws = layer.Effects.addProperty("Warp Stabilizer");
         if (!ws) { app.endUndoGroup(); return { success: false, error: "Warp Stabilizer not available" }; }
-        if (args.smoothness !== undefined) ws.property("ADBE WS Smoothness").setValue(args.smoothness);
+        if (args.smoothness !== undefined) ws.property("ADBE SubspaceStabilizer-0020").setValue(args.smoothness);
         var methodMap = { subspace_warp: 3, perspective: 2, similarity: 1, position: 0 };
         if (args.method && methodMap[args.method] !== undefined) ws.property("ADBE WS Method").setValue(methodMap[args.method]);
         app.endUndoGroup();
@@ -306,28 +306,27 @@
 
         if (p === "cinematic") {
           bc.property("ADBE Brightness & Contrast 2-0002").setValue(15 * intensity);
-          hs.property("ADBE HUE SATURATION-0003").setValue(-20 * intensity);
-          // Blue channel lift for teal-orange look
+          hs.property("ADBE HUE SATURATION-0005").setValue(-20 * intensity); // desaturate slightly
         } else if (p === "warm") {
           bc.property("ADBE Brightness & Contrast 2-0001").setValue(5 * intensity);
           bc.property("ADBE Brightness & Contrast 2-0002").setValue(10 * intensity);
-          hs.property("ADBE HUE SATURATION-0003").setValue(20 * intensity);
-          hs.property("ADBE HUE SATURATION-0002").setValue(15 * intensity);
+          hs.property("ADBE HUE SATURATION-0004").setValue(20 * intensity);  // hue shift warm
+          hs.property("ADBE HUE SATURATION-0005").setValue(15 * intensity);  // boost saturation
         } else if (p === "cool") {
-          hs.property("ADBE HUE SATURATION-0003").setValue(-10 * intensity);
-          hs.property("ADBE HUE SATURATION-0002").setValue(-20 * intensity);
+          hs.property("ADBE HUE SATURATION-0004").setValue(-10 * intensity); // hue shift cool
+          hs.property("ADBE HUE SATURATION-0005").setValue(-20 * intensity); // reduce saturation
         } else if (p === "vintage") {
           bc.property("ADBE Brightness & Contrast 2-0002").setValue(10 * intensity);
-          hs.property("ADBE HUE SATURATION-0003").setValue(-40 * intensity);
-          hs.property("ADBE HUE SATURATION-0002").setValue(10 * intensity);
+          hs.property("ADBE HUE SATURATION-0005").setValue(-40 * intensity); // heavy desaturation
+          hs.property("ADBE HUE SATURATION-0004").setValue(10 * intensity);  // slight hue shift
         } else if (p === "moody") {
           bc.property("ADBE Brightness & Contrast 2-0001").setValue(-10 * intensity);
           bc.property("ADBE Brightness & Contrast 2-0002").setValue(20 * intensity);
-          hs.property("ADBE HUE SATURATION-0003").setValue(-30 * intensity);
+          hs.property("ADBE HUE SATURATION-0005").setValue(-30 * intensity); // desaturate
         } else if (p === "bright") {
           bc.property("ADBE Brightness & Contrast 2-0001").setValue(15 * intensity);
           bc.property("ADBE Brightness & Contrast 2-0002").setValue(5 * intensity);
-          hs.property("ADBE HUE SATURATION-0003").setValue(15 * intensity);
+          hs.property("ADBE HUE SATURATION-0005").setValue(15 * intensity);  // boost saturation
         } else if (p === "clean") {
           bc.property("ADBE Brightness & Contrast 2-0002").setValue(8 * intensity);
         }
@@ -351,8 +350,8 @@
         }
         if (args.saturation !== undefined || args.hue !== undefined) {
           var hs = layer.Effects.addProperty("ADBE HUE SATURATION");
-          if (args.hue !== undefined) hs.property("ADBE HUE SATURATION-0002").setValue(args.hue);
-          if (args.saturation !== undefined) hs.property("ADBE HUE SATURATION-0003").setValue(args.saturation);
+          if (args.hue !== undefined) hs.property("ADBE HUE SATURATION-0004").setValue(args.hue);
+          if (args.saturation !== undefined) hs.property("ADBE HUE SATURATION-0005").setValue(args.saturation);
         }
         if (args.temperature !== undefined) {
           var cb = layer.Effects.addProperty("ADBE Color Balance (HLS)");
